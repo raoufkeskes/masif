@@ -108,6 +108,8 @@ for ppi_pair_id in ppi_pair_ids:
 
         print("Total number of patches:{} \n".format(len(mask)))
 
+        print(input_feat[:,:,3].min())
+        print(input_feat[:, :, 3].max())
         tic = time.time()
         scores = run_masif_site(
             params,

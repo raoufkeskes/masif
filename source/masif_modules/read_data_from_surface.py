@@ -48,14 +48,14 @@ def read_data_from_surface(ply_fn, params):
 
     # Normalize the charge.
     charge = mesh.get_attribute("vertex_charge")
-    charge = normalize_electrostatics(charge)
+    #charge = normalize_electrostatics(charge)
 
     # Hbond features
     hbond = mesh.get_attribute("vertex_hbond")
 
     # Hydropathy features
     # Normalize hydropathy by dividing by 4.5
-    hphob = mesh.get_attribute("vertex_hphob")/4.5
+    hphob = mesh.get_attribute("vertex_hphob")# /4.5
 
     # Iface labels (for ground truth only)     
     if "vertex_iface" in mesh.get_attribute_names():

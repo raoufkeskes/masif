@@ -25,11 +25,11 @@ Released under an Apache License 2.0
 
 params = masif_opts["ppi_search"]
 
-binder_rho_wrt_center = np.load(params["cache_dir"] + "/binder_rho_wrt_center.npy")
-binder_theta_wrt_center = np.load(params["cache_dir"] + "/binder_theta_wrt_center.npy")
-binder_input_feat = np.load(params["cache_dir"] + "/binder_input_feat.npy")
-binder_mask = np.load(params["cache_dir"] + "/binder_mask.npy")
-binder_input_feat = mask_input_feat(binder_input_feat, params["feat_mask"])
+target_rho_wrt_center = np.load(params["cache_dir"] + "/target_rho_wrt_center.npy")
+target_theta_wrt_center = np.load(params["cache_dir"] + "/target_theta_wrt_center.npy")
+target_input_feat = np.load(params["cache_dir"] + "/target_input_feat.npy")
+target_mask = np.load(params["cache_dir"] + "/target_mask.npy")
+target_input_feat = mask_input_feat(target_input_feat, params["feat_mask"])
 
 pos_training_idx = (np.load(params["cache_dir"] + "/pos_training_idx.npy")).astype(int)
 pos_val_idx = (np.load(params["cache_dir"] + "/pos_val_idx.npy")).astype(int)
@@ -65,7 +65,7 @@ learning_obj = MaSIF_ppi_search(
     feat_mask=params["feat_mask"],
 )
 
-# Compute the list of binders.
+# Compute the list of targets.
 
 
 print(params["feat_mask"])
@@ -79,10 +79,10 @@ from masif_modules.train_ppi_search import train_ppi_search
 train_ppi_search(
     learning_obj,
     params,
-    binder_rho_wrt_center,
-    binder_theta_wrt_center,
-    binder_input_feat,
-    binder_mask,
+    target_rho_wrt_center,
+    target_theta_wrt_center,
+    target_input_feat,
+    target_mask,
     pos_training_idx,
     pos_val_idx,
     pos_test_idx,

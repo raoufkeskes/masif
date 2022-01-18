@@ -2,39 +2,14 @@
 # Pablo Gainza - LPDI STI EPFL 2018-2019
 # Released under an Apache License 2.0
 
-import os 
+import os
+import sys
+
 from IPython.core.debugger import set_trace
 epsilon = 1.0e-6
 
-msms_bin= ""
-if 'MSMS_BIN' in os.environ:
-   msms_bin = os.environ['MSMS_BIN']
-else:
-  set_trace()
-  print("ERROR: MSMS_BIN not set. Variable should point to MSMS program.")
-  sys.exit(1)
+msms_bin= "/home/raouf_ks/Desktop/Projects/MAbSIF/requirements/msms/msms"
+pdb2pqr_bin = "/home/raouf_ks/Desktop/Projects/MAbSIF/requirements/pdb2pqr/pdb2pqr"
+apbs_bin="/home/raouf_ks/Desktop/Projects/MAbSIF/requirements/apbs/apbs-1.5/bin/apbs"
+multivalue_bin="/home/raouf_ks/Desktop/Projects/MAbSIF/requirements/apbs/apbs-1.5/bin/multivalue"
 
-pdb2pqr_bin=""
-if 'PDB2PQR_BIN' in os.environ:
-   pdb2pqr_bin = os.environ['PDB2PQR_BIN']
-else:
-  print("ERROR: PDB2PQR_BIN not set. Variable should point to PDB2PQR_BIN program.")
-  sys.exit(1)
-
-apbs_bin=""
-if 'APBS_BIN' in os.environ:
-   apbs_bin = os.environ['APBS_BIN']
-else:
-  print("ERROR: APBS_BIN not set. Variable should point to APBS program.")
-  sys.exit(1)
-  
-multivalue_bin=""
-if 'MULTIVALUE_BIN' in os.environ:
-   multivalue_bin = os.environ['MULTIVALUE_BIN']
-else:
-  print("ERROR: MULTIVALUE_BIN not set. Variable should point to MULTIVALUE program.")
-  sys.exit(1)
-
-
-class NoSolutionError(Exception):
-    pass

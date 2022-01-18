@@ -462,18 +462,18 @@ def train_ppi_search(
 
             tic = time.time()
 
-            if val_auc > best_val_auc:
-                logfile.write(">>> Saving model.\n")
-                print(">>> Saving model.")
-                best_val_auc = val_auc
-                output_model = out_dir + "model"
-                learning_obj.saver.save(learning_obj.session, output_model)
-                np.save(out_dir + "pos_dists.npy", pos_dists)
-                np.save(out_dir + "pos_test_idx.npy", neg_test_idx)
-                np.save(out_dir + "neg_dists.npy", neg_dists)
-                np.save(out_dir + "pos_desc.npy", pos_desc)
-                np.save(out_dir + "binder_desc.npy", binder_desc)
-                np.save(out_dir + "neg_desc.npy", neg_desc)
-                np.save(out_dir + "neg_test_idx.npy", neg_test_idx)
-                np.save(out_dir + "neg_desc_2.npy", neg_desc_2)
+
+            logfile.write(">>> Saving model.\n")
+            print(">>> Saving model.")
+            best_val_auc = val_auc
+            output_model = out_dir + "model"
+            learning_obj.saver.save(learning_obj.session, output_model)
+            np.save(out_dir + "pos_dists.npy", pos_dists)
+            np.save(out_dir + "pos_test_idx.npy", neg_test_idx)
+            np.save(out_dir + "neg_dists.npy", neg_dists)
+            np.save(out_dir + "pos_desc.npy", pos_desc)
+            np.save(out_dir + "binder_desc.npy", binder_desc)
+            np.save(out_dir + "neg_desc.npy", neg_desc)
+            np.save(out_dir + "neg_test_idx.npy", neg_test_idx)
+            np.save(out_dir + "neg_desc_2.npy", neg_desc_2)
 

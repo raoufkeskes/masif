@@ -32,11 +32,11 @@ def computeAPBS(vertices, pdb_file, tmp_file_base):
     ]
     p2 = Popen(args, stdout=PIPE, stderr=PIPE, cwd=directory)
     stdout, stderr = p2.communicate()
-
+    print("error  pdb2pqr_bin  ", stderr)
     args = [apbs_bin, filename_base + ".in"]
     p2 = Popen(args, stdout=PIPE, stderr=PIPE, cwd=directory)
     stdout, stderr = p2.communicate()
-
+    print("error  apbs_bin  ", stderr)
     vertfile = open(directory + "/" + filename_base + ".csv", "w")
     for vert in vertices:
         vertfile.write("{},{},{}\n".format(vert[0], vert[1], vert[2]))
@@ -50,7 +50,7 @@ def computeAPBS(vertices, pdb_file, tmp_file_base):
     ]
     p2 = Popen(args, stdout=PIPE, stderr=PIPE, cwd=directory)
     stdout, stderr = p2.communicate()
-
+    print("error  multivalue_bin  ", stderr)
     # Read the charge file
     chargefile = open(tmp_file_base + "_out.csv")
     charges = numpy.array([0.0] * len(vertices))

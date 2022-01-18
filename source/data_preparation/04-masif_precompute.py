@@ -15,7 +15,7 @@ np.random.seed(0)
 # Load training data (From many files)
 from masif_modules.read_data_from_surface import read_data_from_surface, compute_shape_complementarity
 
-print(sys.argv[2])
+print(sys.argv)
 
 if len(sys.argv) <= 1:
     print("Usage: {config} "+sys.argv[0]+" {masif_ppi_search | masif_site} PDBID_A")
@@ -93,3 +93,4 @@ for ppi_pair_id in ppi_pair_list:
         np.save(my_precomp_dir+pid+'_X.npy', verts[pid][:,0])
         np.save(my_precomp_dir+pid+'_Y.npy', verts[pid][:,1])
         np.save(my_precomp_dir+pid+'_Z.npy', verts[pid][:,2])
+
