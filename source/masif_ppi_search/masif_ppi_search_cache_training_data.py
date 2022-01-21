@@ -1,19 +1,19 @@
-# Header variables and parameters.
-import pickle
 import sys
-
-import pandas as pd
-import pymesh
 import os
 import numpy as np
 from IPython.core.debugger import set_trace
 import importlib
-
-from scipy.spatial import cKDTree, KDTree
-from tqdm import tqdm
-
+import pandas as pd
+from scipy.spatial import cKDTree
+from tqdm.auto import tqdm
 from default_config.masif_opts import masif_opts
-from masif_modules.train_masif_site import Protein
+import pickle
+from masif_modules.protein import Protein
+from sklearn.neighbors import KDTree
+
+
+
+
 
 """
 masif_ppi_search_cache_training_data.py: Function to cache all the training data for MaSIF-search. 
@@ -62,44 +62,49 @@ test_idx = []
 pos_names = []
 neg_names = []
 
-df = pd.read_csv("/home/raouf_ks/Desktop/Projects/structures_data/tables/antibodies_sample.csv")
+# training_list = [x.rstrip() for x in open(params['training_list']).readlines()]
+# testing_list = [x.rstrip() for x in open(params['testing_list']).readlines()]
+
+df = pd.read_csv("/home/raoufks/Desktop/Projects/structures_data/tables/antibodies_sample.csv")
 
 df_train = df[df["set"] == "train"]
 df_valid = df[df["set"] == "valid"]
+
 df_train_valid = pd.concat((df_train, df_valid))
 df_test = df[df["set"] == "test"]
 
-precomp_path = "/home/raouf_ks/Desktop/data/precomputed/"
-radius = 9
-
-pbar1 = tqdm(iterable=df.iterrows(), total=len(df), desc="Caching ... ")
+precomp_path = "/media/raoufks/Maxtor/raouf/data/precomputed/"
+radius = 12
 
 idx_count = 0
+pbar1 = tqdm(iterable=df.iterrows(), total=len(df), desc="training ... ")
 for idx, row in pbar1:
-    pbar1.set_description("training ... " + row["complex_filename"])
-    pkl_path_antibody = os.path.join(precomp_path, str(radius) + "A",
-                                     row["antibody_filename"] + ".pkl")
-    pkl_path_antigen = os.path.join(precomp_path, str(radius) + "A",
-                                    row["antibody_filename"] + ".pkl")
-    if os.path.exists(pkl_path_antibody) and os.path.exists(pkl_path_antigen):
-        with open(pkl_path_antigen, "rb") as f, open(pkl_path_antibody, "rb") as f2:
-            antigen = Protein(*pickle.load(f))
+    # Read the corresponding ply files.
+    pbar1.set_description("Cache data ... " + row["complex_filename"])
+    antigen_pkl_path = os.path.join(precomp_path, str(radius) + "A", row["antigen_filename"] + ".pkl")
+    antibody_pkl_path = os.path.join(precomp_path, str(radius) + "A", row["antibody_filename"] + ".pkl")
+
+    if os.path.exists(antigen_pkl_path) and os.path.exists(antibody_pkl_path):
+        with open(antigen_pkl_path, "rb") as antigen_file, open(antibody_pkl_path, "rb") as antibody_file:
+            antigen = Protein(*pickle.load(antigen_file))
             antigen.normalize_hydrophobia()
             antigen.normalize_electrostatics()
-            antibody = Protein(*pickle.load(f2))
+
+            antibody = Protein(*pickle.load(antibody_file))
             antibody.normalize_hydrophobia()
             antibody.normalize_electrostatics()
+
+            # protein.patches_features = protein.patches_features[:, :, [0, 1, 4, 3, 2]]
+            iface_labels = antigen.iface["kdtree"]
             if (
-                    np.sum(antigen.iface) > 0.75 * len(antigen.iface)
-                    or np.sum(antigen.iface) < 30
+                    np.sum(iface_labels) > 0.75 * len(iface_labels)
+                    or np.sum(iface_labels) < 30
             ):
                 continue
 
-            pos_labels = np.where(antigen.iface == 1)[0]
-
+            # pos_labels: points > max_sc_filt and >  min_sc_filt.
+            pos_labels = np.where(iface_labels == 1)[0]
             K = int(params['pos_surf_accept_probability'] * len(pos_labels))
-            if K < 1:
-                continue
             l = np.arange(len(pos_labels))
             np.random.shuffle(l)
             l = l[:K]
@@ -114,97 +119,95 @@ for idx, row in pbar1:
             # Contact points: those within a cutoff distance.
             contact_points = np.where(d < params['pos_interface_cutoff'])[0]
             k1 = l[contact_points]
-            k2_pos = r[contact_points]
-            #
+            k2_pos = r[contact_points].reshape(-1)
+            # For negatives, get points in v2 far from p1.
             kdt = KDTree(v1)
             dneg, rneg = kdt.query(v2)
-
             k2_neg = np.where(dneg > params['pos_interface_cutoff'])[0]
 
             assert len(k1) == len(k2_pos)
             n_pos = len(k1)
-
-            pid = row["antigen_filename"]  # Binder is p1
+            #
+            ppi_pair_id = row["complex_filename"]
+            pid = row["antigen_filename"]  # target is p1
             for ii in k1:
-                pos_names.append('{}_{}_{}'.format(row["complex_filename"], pid, ii))
+                pos_names.append('{}_{}_{}'.format(ppi_pair_id, pid, ii))
 
             target_rho_wrt_center.append(antigen.rhos[k1])
             target_theta_wrt_center.append(antigen.thetas[k1])
             target_input_feat.append(antigen.patches_features[k1])
             target_mask.append(antigen.mask[k1])
 
-            # Read pos, which is p2.
-            pid = row["antibody_filename"]
-
+            # Read as positives those points.
             pos_rho_wrt_center.append(antibody.rhos[k2_pos])
             pos_theta_wrt_center.append(antibody.thetas[k2_pos])
             pos_input_feat.append(antibody.patches_features[k2_pos])
             pos_mask.append(antibody.mask[k2_pos])
-
-            # Get a set of negatives from  p2.
+#
             np.random.shuffle(k2_neg)
             k2_neg = k2_neg[:(len(k2_pos))]
-            assert (len(k2_neg) == len(k2_pos))
-
+            assert(len(k2_neg) == n_pos)
             neg_rho_wrt_center.append(antibody.rhos[k2_neg])
             neg_theta_wrt_center.append(antibody.thetas[k2_neg])
             neg_input_feat.append(antibody.patches_features[k2_neg])
             neg_mask.append(antibody.mask[k2_neg])
 
+            pid = row["antibody_filename"]
             for ii in k2_neg:
-                neg_names.append('{}_{}_{}'.format(row["complex_filename"], pid, ii))
+                neg_names.append('{}_{}_{}'.format(ppi_pair_id, pid, ii))
 
             # Training, validation or test?
+
             if row["set"] == "train":
-                training_idx = np.append(training_idx, np.arange(idx_count, idx_count + n_pos))
+                training_idx = np.append(training_idx, np.arange(idx_count, idx_count+n_pos))
             elif row["set"] == "valid":
-                val_idx = np.append(val_idx, np.arange(idx_count, idx_count + n_pos))
+                val_idx = np.append(val_idx, np.arange(idx_count, idx_count+n_pos))
             else:
-                test_idx = np.append(test_idx, np.arange(idx_count, idx_count + n_pos))
+                test_idx = np.append(test_idx, np.arange(idx_count, idx_count+n_pos))
 
             idx_count += n_pos
-
+#
 if not os.path.exists(params['cache_dir']):
     os.makedirs(params['cache_dir'])
-
+#
 target_rho_wrt_center = np.concatenate(target_rho_wrt_center, axis=0)
 target_theta_wrt_center = np.concatenate(target_theta_wrt_center, axis=0)
 target_input_feat = np.concatenate(target_input_feat, axis=0)
 target_mask = np.concatenate(target_mask, axis=0)
-
+#
 pos_rho_wrt_center = np.concatenate(pos_rho_wrt_center, axis=0)
 pos_theta_wrt_center = np.concatenate(pos_theta_wrt_center, axis=0)
 pos_input_feat = np.concatenate(pos_input_feat, axis=0)
 pos_mask = np.concatenate(pos_mask, axis=0)
-np.save(params['cache_dir'] + '/pos_names.npy', pos_names)
-
+np.save(params['cache_dir']+'/pos_names.npy', pos_names)
+#
 neg_rho_wrt_center = np.concatenate(neg_rho_wrt_center, axis=0)
 neg_theta_wrt_center = np.concatenate(neg_theta_wrt_center, axis=0)
 neg_input_feat = np.concatenate(neg_input_feat, axis=0)
 neg_mask = np.concatenate(neg_mask, axis=0)
-np.save(params['cache_dir'] + '/neg_names.npy', neg_names)
+np.save(params['cache_dir']+'/neg_names.npy', neg_names)
+#
 
-print("Read {} negative shapes".format(len(neg_rho_wrt_center)))
-print("Read {} positive shapes".format(len(pos_rho_wrt_center)))
+print("Read {} negative shapes".format((neg_rho_wrt_center).shape))
+print("Read {} positive shapes".format((pos_rho_wrt_center).shape))
+np.save(params['cache_dir']+'/target_rho_wrt_center.npy', target_rho_wrt_center)
+np.save(params['cache_dir']+'/target_theta_wrt_center.npy', target_theta_wrt_center)
+np.save(params['cache_dir']+'/target_input_feat.npy', target_input_feat)
+np.save(params['cache_dir']+'/target_mask.npy', target_mask)
 
-np.save(params['cache_dir'] + '/target_rho_wrt_center.npy', target_rho_wrt_center)
-np.save(params['cache_dir'] + '/target_theta_wrt_center.npy', target_theta_wrt_center)
-np.save(params['cache_dir'] + '/target_input_feat.npy', target_input_feat)
-np.save(params['cache_dir'] + '/target_mask.npy', target_mask)
+np.save(params['cache_dir']+'/pos_training_idx.npy', training_idx)
+np.save(params['cache_dir']+'/pos_val_idx.npy', val_idx)
+np.save(params['cache_dir']+'/pos_test_idx.npy', test_idx)
+np.save(params['cache_dir']+'/pos_rho_wrt_center.npy', pos_rho_wrt_center)
+np.save(params['cache_dir']+'/pos_theta_wrt_center.npy', pos_theta_wrt_center)
+np.save(params['cache_dir']+'/pos_input_feat.npy', pos_input_feat)
+np.save(params['cache_dir']+'/pos_mask.npy', pos_mask)
 
-np.save(params['cache_dir'] + '/pos_training_idx.npy', training_idx)
-np.save(params['cache_dir'] + '/pos_val_idx.npy', val_idx)
-np.save(params['cache_dir'] + '/pos_test_idx.npy', test_idx)
-np.save(params['cache_dir'] + '/pos_rho_wrt_center.npy', pos_rho_wrt_center)
-np.save(params['cache_dir'] + '/pos_theta_wrt_center.npy', pos_theta_wrt_center)
-np.save(params['cache_dir'] + '/pos_input_feat.npy', pos_input_feat)
-np.save(params['cache_dir'] + '/pos_mask.npy', pos_mask)
-
-np.save(params['cache_dir'] + '/neg_training_idx.npy', training_idx)
-np.save(params['cache_dir'] + '/neg_val_idx.npy', val_idx)
-np.save(params['cache_dir'] + '/neg_test_idx.npy', test_idx)
-np.save(params['cache_dir'] + '/neg_rho_wrt_center.npy', neg_rho_wrt_center)
-np.save(params['cache_dir'] + '/neg_theta_wrt_center.npy', neg_theta_wrt_center)
-np.save(params['cache_dir'] + '/neg_input_feat.npy', neg_input_feat)
-np.save(params['cache_dir'] + '/neg_mask.npy', neg_mask)
-np.save(params['cache_dir'] + '/neg_names.npy', neg_names)
+np.save(params['cache_dir']+'/neg_training_idx.npy', training_idx)
+np.save(params['cache_dir']+'/neg_val_idx.npy', val_idx)
+np.save(params['cache_dir']+'/neg_test_idx.npy', test_idx)
+np.save(params['cache_dir']+'/neg_rho_wrt_center.npy', neg_rho_wrt_center)
+np.save(params['cache_dir']+'/neg_theta_wrt_center.npy', neg_theta_wrt_center)
+np.save(params['cache_dir']+'/neg_input_feat.npy', neg_input_feat)
+np.save(params['cache_dir']+'/neg_mask.npy', neg_mask)
+np.save(params['cache_dir']+'/neg_names.npy', neg_names)

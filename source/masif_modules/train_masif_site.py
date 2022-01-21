@@ -9,50 +9,6 @@ import pickle
 from tqdm.auto import tqdm
 
 
-class Protein:
-
-    def __init__(self, id, pdb_filename, vertices, faces, normals, vertices_features, patch_radius, patches_features,
-                 rhos, thetas,
-                 neigh_indices, mask, iface):
-        self.id = id
-        self.pdb_filename = pdb_filename
-        self.vertices = vertices
-        self.normals = normals
-        self.faces = faces
-        self.vertices_features = vertices_features
-        self.patch_radius = patch_radius
-        self.patches_features = patches_features
-        self.rhos = rhos
-        self.thetas = thetas
-        self.neigh_indices = neigh_indices
-        self.mask = mask
-        self.iface = iface
-        self.fingerprints = []
-        self.patch2amino = {}
-        self.amino2seqpos = {}
-        self.full_sequence = ""
-
-    def normalize_hydrophobia(self):
-        self.vertices_features[:, 1] /= 4.5
-        self.patches_features[:, :, 2] /= 4.5
-
-    def normalize_electrostatics(self,
-                                 lower_th=-30,
-                                 upper_th=+30):
-        elec = self.patches_features[:, :, 3]
-        elec[elec > upper_th] = upper_th
-        elec[elec < lower_th] = lower_th
-        elec = elec - lower_th
-        elec = elec / (upper_th - lower_th)
-        self.patches_features[:, :, 3] = 2 * elec - 1
-
-        elec = self.vertices_features[:, 2]
-        elec[elec > upper_th] = upper_th
-        elec[elec < lower_th] = lower_th
-        elec = elec - lower_th
-        elec = elec / (upper_th - lower_th)
-        self.vertices_features[:, 2] = 2 * elec - 1
-
 
 # Apply mask to input_feat
 def mask_input_feat(input_feat, mask):

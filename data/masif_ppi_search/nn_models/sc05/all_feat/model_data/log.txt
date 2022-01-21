@@ -1,0 +1,6 @@
+Number of training positive shapes: 7580
+Number of validation positive shapes: 745
+Number of testing positive shapes: 620
+Number of training negative shapes: 7580
+Number of validation negative shapes: 745
+Number of testing negative shapes: 620

@@ -196,19 +196,17 @@ def train_ppi_search(
     batch_size_val_test=1000,
 ):
 
-    out_dir = params["model_dir"]
-    logfile = open(out_dir + "log.txt", "w")
-    logfile.write(
-        "Number of training positive shapes: {}\n".format(len(pos_training_idx))
-    )
-    logfile.write("Number of validation positive shapes: {}\n".format(len(pos_val_idx)))
-    logfile.write("Number of testing positive shapes: {}\n".format(len(pos_test_idx)))
 
-    logfile.write(
+    print("Number of training positive shapes: {}\n".format(len(pos_training_idx)))
+    print("Number of validation positive shapes: {}\n".format(len(pos_val_idx)))
+    print("Number of testing positive shapes: {}\n".format(len(pos_test_idx)))
+
+    print(
         "Number of training negative shapes: {}\n".format(len(neg_training_idx))
     )
-    logfile.write("Number of validation negative shapes: {}\n".format(len(neg_val_idx)))
-    logfile.write("Number of testing negative shapes: {}\n".format(len(neg_test_idx)))
+    print("Number of validation negative shapes: {}\n".format(len(neg_val_idx)))
+    print("Number of testing negative shapes: {}\n".format(len(neg_test_idx)))
+
 
     list_training_loss = []
     list_training_norm_grad = []
@@ -218,7 +216,7 @@ def train_ppi_search(
     pos_training_idx_copy = np.copy(pos_training_idx)
     neg_training_idx_copy = np.copy(neg_training_idx)
 
-    logfile.write("Number of iterations: {}\n".format(num_iterations))
+    print("Number of iterations: {}\n".format(num_iterations))
 
     iter_training_loss = []
     iter_pos_score = []
@@ -318,30 +316,19 @@ def train_ppi_search(
         list_training_loss.append(training_loss)
 
         if num_iter % num_iter_test == 0:
-            logfile.write("Validating and testing.\n ")
+            print("Validating and testing.\n ")
             roc_auc = 1 - compute_roc_auc(iter_pos_score, iter_neg_score)
-            logfile.write("training_loss: {}\n".format(np.mean(list_training_loss)))
+            print("training_loss: {}\n".format(np.mean(list_training_loss)))
             print("Approx Training ROC AUC: {}\n ".format(roc_auc))
-            print(
-                "Mean training positive score: {} ".format(
-                    np.mean(1.0 / iter_pos_score)
-                )
-            )
-            print(
-                "Mean training negative score: {} ".format(
-                    np.mean(1.0 / iter_neg_score)
-                )
-            )
-            logfile.write("Training ROC AUC: {}\n ".format(roc_auc))
+            print("Mean training positive score: {} ".format(np.mean(1.0 / iter_pos_score)))
+            print("Mean training negative score: {} ".format(np.mean(1.0 / iter_neg_score)))
+            print("Training ROC AUC: {}\n ".format(roc_auc))
 
             iter_pos_score = []
             iter_neg_score = []
             list_training_loss = []
 
             training_time_entry = time.time() - tic
-            logfile.write(
-                "Training 1000 entry took {:.2f}s \n".format(training_time_entry)
-            )
             print("Training 1000 entries took {}".format(training_time_entry))
 
             tic = time.time()
@@ -392,17 +379,10 @@ def train_ppi_search(
                 sys.exit(1)
             val_time = time.time() - tic
 
-            logfile.write(
-                "Iteration {} validation roc auc: {}\n".format(num_iter, val_auc)
-            )
+            print("Iteration {} validation roc auc: {}\n".format(num_iter, val_auc))
             print("Iteration {} validation roc auc: {}".format(num_iter, val_auc))
-
-            logfile.write(
-                "Mean validation positive score: {} ".format(np.mean(pos_dists))
-            )
-            logfile.write(
-                "Mean validation negative score: {} ".format(np.mean(neg_dists))
-            )
+            print("Mean validation positive score: {} ".format(np.mean(pos_dists)))
+            print("Mean validation negative score: {} ".format(np.mean(neg_dists)))
             # Compute TEST ROC AUC.
             tic = time.time()
             pos_desc = compute_val_test_desc(
@@ -445,35 +425,32 @@ def train_ppi_search(
             test_auc = 1 - compute_roc_auc(pos_dists, neg_dists)
 
             test_time = time.time() - tic
-            logfile.write("Iteration {} test roc auc: {}\n".format(num_iter, test_auc))
-            logfile.write(
-                "Iteration time: {} validation time: {} test time: {}\n".format(
-                    np.mean(iter_time), val_time, test_time
-                )
-            )
+            print("Iteration {} test roc auc: {}\n".format(num_iter, test_auc))
+            print("Iteration time: {} validation time: {} test time: {}\n".format(np.mean(iter_time),
+                                                                                  val_time,
+                                                                                  test_time))
             print("Iteration {} test roc auc: {}".format(num_iter, test_auc))
-            print(
-                "Iteration time: {} validation time: {} test time: {}".format(
-                    np.mean(iter_time), val_time, test_time
-                )
-            )
+            print("Iteration time: {} validation time: {} test time: {}".format(np.mean(iter_time),
+                                                                                val_time,
+                                                                                test_time))
             print("Mean test positive score: {} ".format(np.mean(pos_dists)))
             print("Mean test negative score: {} ".format(np.mean(neg_dists)))
 
             tic = time.time()
 
+            out_dir = params["model_dir"]
+            if val_auc > best_val_auc:
+                print(">>> Saving model.")
+                best_val_auc = val_auc
+                output_model = out_dir + "model"
+                learning_obj.saver.save(learning_obj.session, output_model)
+                np.save(out_dir + "pos_dists.npy", pos_dists)
+                np.save(out_dir + "pos_test_idx.npy", neg_test_idx)
+                np.save(out_dir + "neg_dists.npy", neg_dists)
+                np.save(out_dir + "pos_desc.npy", pos_desc)
+                np.save(out_dir + "binder_desc.npy", binder_desc)
+                np.save(out_dir + "neg_desc.npy", neg_desc)
+                np.save(out_dir + "neg_test_idx.npy", neg_test_idx)
+                np.save(out_dir + "neg_desc_2.npy", neg_desc_2)
 
-            logfile.write(">>> Saving model.\n")
-            print(">>> Saving model.")
-            best_val_auc = val_auc
-            output_model = out_dir + "model"
-            learning_obj.saver.save(learning_obj.session, output_model)
-            np.save(out_dir + "pos_dists.npy", pos_dists)
-            np.save(out_dir + "pos_test_idx.npy", neg_test_idx)
-            np.save(out_dir + "neg_dists.npy", neg_dists)
-            np.save(out_dir + "pos_desc.npy", pos_desc)
-            np.save(out_dir + "binder_desc.npy", binder_desc)
-            np.save(out_dir + "neg_desc.npy", neg_desc)
-            np.save(out_dir + "neg_test_idx.npy", neg_test_idx)
-            np.save(out_dir + "neg_desc_2.npy", neg_desc_2)
 
