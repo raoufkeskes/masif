@@ -1,3 +1,5 @@
+from operator import neg
+
 import tensorflow as tf
 import numpy as np
 
@@ -149,13 +151,13 @@ class MaSIF_ppi_search:
             self.global_desc, tf.range(3 * self.n_patches, 4 * self.n_patches)
         )
 
-        pos_distances = tf.reduce_sum(
-            tf.square(self.global_desc_binder - self.global_desc_pos), 1
-        )
-        neg_distances = tf.reduce_sum(
-            tf.square(self.global_desc_neg - self.global_desc_neg_2), 1
-        )
+
+        pos_distances = tf.reduce_sum(tf.square(self.global_desc_binder - self.global_desc_pos), 1)
+        neg_distances = tf.reduce_sum(tf.square(self.global_desc_binder - self.global_desc_neg), 1)
+
         self.score = tf.concat([pos_distances, neg_distances], axis=0)
+
+
         pos_distances = tf.nn.relu(
             tf.reduce_sum(tf.square(self.global_desc_binder - self.global_desc_pos), 1)
             - pos_thresh
@@ -168,6 +170,10 @@ class MaSIF_ppi_search:
         pos_mean, pos_std = tf.nn.moments(pos_distances, [0])
         neg_mean, neg_std = tf.nn.moments(neg_distances, [0])
         data_loss = pos_std + neg_std + pos_mean + neg_mean
+
+        # margin = 0.5
+        # data_loss = tf.maximum(0., margin + pos_distances - neg_distances)
+        # data_loss = tf.reduce_mean(data_loss)
 
         return data_loss
 

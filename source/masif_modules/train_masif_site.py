@@ -11,6 +11,9 @@ from tqdm.auto import tqdm
 
 
 # Apply mask to input_feat
+from masif_modules.protein import Protein
+
+
 def mask_input_feat(input_feat, mask):
     mymask = np.where(np.array(mask) == 0.0)[0]
     return np.delete(input_feat, mymask, axis=2)
