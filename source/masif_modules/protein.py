@@ -58,7 +58,7 @@ class Protein:
             vertices: coordinates of vertices
             faces: mesh
         """
-        surfaces_path = "/media/raoufks/Maxtor/raouf/data/surfaces"
+        surfaces_path = "/media/raouf-ks/Maxtor/raouf/data/surfaces"
 
         if not os.path.exists(surfaces_path):
             os.makedirs(surfaces_path)
@@ -107,7 +107,7 @@ class Protein:
             str_patches_idx = list(map(lambda x: str(x), patches_idxs))
             str_filename = "+".join(str_patches_idx)
             str_filename = "meta" if len(str_filename) > 30 else str_filename
-            filename = os.path.join(surfaces_path, self.id + "patch_" + str_filename + name_extension + ".ply")
+            filename = os.path.join(surfaces_path, self.id + "_patch_" + str_filename + name_extension + ".ply")
 
 
         else:

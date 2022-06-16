@@ -25,6 +25,10 @@ Released under an Apache License 2.0
 
 params = masif_opts["ppi_search"]
 
+params['cache_dir'] = "/media/raouf-ks/Maxtor/raouf/masif_cache"
+
+
+
 target_rho_wrt_center = np.load(params["cache_dir"] + "/target_rho_wrt_center.npy")
 target_theta_wrt_center = np.load(params["cache_dir"] + "/target_theta_wrt_center.npy")
 target_input_feat = np.load(params["cache_dir"] + "/target_input_feat.npy")
@@ -50,6 +54,7 @@ neg_input_feat = np.load(params["cache_dir"] + "/neg_input_feat.npy")
 neg_mask = np.load(params["cache_dir"] + "/neg_mask.npy")
 neg_input_feat = mask_input_feat(neg_input_feat, params["feat_mask"])
 
+
 if "pids" not in params:
     params["pids"] = ["p1", "p2"]
 
@@ -63,6 +68,7 @@ learning_obj = MaSIF_ppi_search(
     n_rotations=16,
     idx_gpu="/gpu:0",
     feat_mask=params["feat_mask"],
+    learning_rate=1e-4
 )
 
 # Compute the list of targets.

@@ -7,9 +7,26 @@ import os
 from IPython.core.debugger import set_trace
 from sklearn.metrics import accuracy_score, roc_auc_score
 
-
 # Features and theta are flipped for the binder in construct_batch (except for hydrophobicity).
 from tqdm import tqdm
+
+
+def convert_time(exec_time: float):
+    """
+    :param exec_time: in seconds
+    :return: a human readable and intuitive string (hours, minutes, seconds.milliseconds)
+    """
+    final_str = ""
+    hours, rem = divmod(exec_time, 3600)
+    minutes, seconds = divmod(rem, 60)
+    if (hours != 0):
+        final_str = "{:0>2}h, {:0>2}min, {:05.4f} sec".format(int(hours), int(minutes), seconds)
+    elif (minutes != 0):
+        final_str = "{:0>2} min, {:05.4f} sec".format(int(minutes), seconds)
+    else:
+        final_str = "{:05.4f} sec".format(seconds)
+
+    return final_str
 
 
 def construct_batch(
@@ -195,8 +212,8 @@ def train_ppi_search(
         neg_mask,
         num_iterations=1000000,
         num_iter_test=1000,
-        batch_size=32,
-        num_epochs=10,
+        batch_size=48,
+        num_epochs=100,
         batch_size_val_test=1000,
 ):
     print("Number of training positive shapes: {}\n".format(len(pos_training_idx)))
@@ -217,7 +234,9 @@ def train_ppi_search(
     iter_training_loss = []
 
     n_batches = int(np.ceil(len(training_idx) / batch_size))
+    val_step = 100
     for epoch in range(num_epochs):
+        t0 = time.time()
         print("epoch {} ...".format(epoch))
         np.random.shuffle(training_idx)
         start = 0
@@ -281,7 +300,6 @@ def train_ppi_search(
             try:
                 pos_score = score[:n]
                 neg_score = score[n:]
-                print(neg_score)
             except:
                 print(score)
                 sys.exit(1)
@@ -294,150 +312,63 @@ def train_ppi_search(
         print("Mean training positive distance: {} ".format(np.mean(pos_dist_ls)))
         print("Mean training negative distance: {} ".format(np.mean(neg_dist_ls)))
 
+        output_model = "/home/raouf-ks/Desktop/ppi_tf_weights/" + str(epoch) + "/model"
+        learning_obj.saver.save(learning_obj.session, output_model, global_step=epoch)
+        np.save("/home/raouf-ks/Desktop/ppi_tf_weights/" + str(epoch) + "/pos_dists.npy", pos_dist_ls)
+        np.save("/home/raouf-ks/Desktop/ppi_tf_weights/" + str(epoch) + "/neg_dists.npy", neg_dist_ls)
 
 
+        tic = time.time()
+        # Compute validation descriptors.
+        pos_desc = compute_val_test_desc(
+            learning_obj,
+            pos_val_idx,
+            pos_rho_wrt_center,
+            pos_theta_wrt_center,
+            pos_input_feat,
+            pos_mask,
+            batch_size=batch_size_val_test,
+        )
 
+        binder_desc = compute_val_test_desc(
+            learning_obj,
+            pos_val_idx,
+            binder_rho_wrt_center,
+            binder_theta_wrt_center,
+            binder_input_feat,
+            binder_mask,
+            batch_size=batch_size_val_test,
+            flip=True,
+        )
 
+        neg_desc = compute_val_test_desc(
+            learning_obj,
+            neg_val_idx,
+            neg_rho_wrt_center,
+            neg_theta_wrt_center,
+            neg_input_feat,
+            neg_mask,
+            batch_size=batch_size_val_test,
+        )
 
-        # if num_iter % num_iter_test == 0:
-        #     # print("Validating and testing.\n ")
-        #     roc_auc = 1 - compute_roc_auc(iter_pos_score, iter_neg_score)
-        #     print("training_loss: {}\n".format(np.mean(list_training_loss)))
-        #     print("Approx Training ROC AUC: {}\n ".format(roc_auc))
-        #     print("Mean training positive score: {} ".format(np.mean(1.0 / iter_pos_score)))
-        #     print("Mean training negative score: {} ".format(np.mean(1.0 / iter_neg_score)))
-        #     print("Training ROC AUC: {}\n ".format(roc_auc))
-        #     #
-        #     iter_pos_score = []
-        #     iter_neg_score = []
-        #     list_training_loss = []
-        #
-        #     training_time_entry = time.time() - tic
-        #     print("Training 1000 entries took {}".format(training_time_entry))
-        #     print("pos scores : ", pos_score)
-        #     print("neg scores : ", neg_score)
-            # tic = time.time()
-            # # Compute validation descriptors.
-            # pos_desc = compute_val_test_desc(
-            #     learning_obj,
-            #     pos_val_idx,
-            #     pos_rho_wrt_center,
-            #     pos_theta_wrt_center,
-            #     pos_input_feat,
-            #     pos_mask,
-            #     batch_size=batch_size_val_test,
-            # )
-            #
-            # binder_desc = compute_val_test_desc(
-            #     learning_obj,
-            #     pos_val_idx,
-            #     binder_rho_wrt_center,
-            #     binder_theta_wrt_center,
-            #     binder_input_feat,
-            #     binder_mask,
-            #     batch_size=batch_size_val_test,
-            #     flip=True,
-            # )
-            #
-            # neg_desc = compute_val_test_desc(
-            #     learning_obj,
-            #     neg_val_idx,
-            #     neg_rho_wrt_center,
-            #     neg_theta_wrt_center,
-            #     neg_input_feat,
-            #     neg_mask,
-            #     batch_size=batch_size_val_test,
-            # )
-            #
-            # neg_desc_2 = binder_desc.copy()
-            # # Simply shuffle negative descriptors.
-            # np.random.shuffle(neg_desc)
-            #
-            # # Compute val ROC AUC.
-            # pos_dists = compute_dists(pos_desc, binder_desc)
-            # neg_dists = compute_dists(neg_desc, neg_desc_2)
-            # try:
-            #     val_auc = 1 - compute_roc_auc(pos_dists, neg_dists)
-            # except:
-            #     print(np.min(pos_dists))
-            #     print(np.min(neg_dists))
-            #     sys.exit(1)
-            # val_time = time.time() - tic
-            #
-            # print("Iteration {} validation roc auc: {}\n".format(num_iter, val_auc))
-            # print("Iteration {} validation roc auc: {}".format(num_iter, val_auc))
-            # print("Mean validation positive score: {} ".format(np.mean(pos_dists)))
-            # print("Mean validation negative score: {} ".format(np.mean(neg_dists)))
-            # # Compute TEST ROC AUC.
+        neg_desc_2 = binder_desc.copy()
+        # Simply shuffle negative descriptors.
+        np.random.shuffle(neg_desc)
 
-            # tic = time.time()
-            # pos_desc = compute_val_test_desc(
-            #     learning_obj,
-            #     pos_test_idx,
-            #     pos_rho_wrt_center,
-            #     pos_theta_wrt_center,
-            #     pos_input_feat,
-            #     pos_mask,
-            #     batch_size=batch_size_val_test,
-            # )
-            #
-            # binder_desc = compute_val_test_desc(
-            #     learning_obj,
-            #     pos_test_idx,
-            #     binder_rho_wrt_center,
-            #     binder_theta_wrt_center,
-            #     binder_input_feat,
-            #     binder_mask,
-            #     batch_size=batch_size_val_test,
-            #     flip=True,
-            # )
-            #
-            # neg_desc = compute_val_test_desc(
-            #     learning_obj,
-            #     neg_test_idx,
-            #     neg_rho_wrt_center,
-            #     neg_theta_wrt_center,
-            #     neg_input_feat,
-            #     neg_mask,
-            #     batch_size=batch_size_val_test,
-            # )
-            #
-            # neg_desc_2 = binder_desc.copy()
-            #
-            # # Compute test ROC AUC.
-            # pos_dists = compute_dists(pos_desc, binder_desc)
-            # np.random.shuffle(neg_desc)
-            # neg_dists = compute_dists(neg_desc, neg_desc_2)
-            # test_auc = 1 - compute_roc_auc(pos_dists, neg_dists)
-            #
-            # test_time = time.time() - tic
-            # print("Iteration {} test roc auc: {}\n".format(num_iter, test_auc))
-            # print("Iteration time: {} validation time: {} test time: {}\n".format(np.mean(np.array(iter_time)),
-            #                                                                       val_time,
-            #                                                                       test_time))
-            # print("Iteration {} test roc auc: {}".format(num_iter, test_auc))
-            # print("Iteration time: {} validation time: {} test time: {}".format(np.mean(np.array(iter_time)),
-            #                                                                     val_time,
-            #                                                                     test_time))
-            # print("Mean test positive score: {} ".format(np.mean(pos_dists)))
-            # print("Mean test negative score: {} ".format(np.mean(neg_dists)))
-            #
-            # tic = time.time()
-            #
-            # out_dir = params["model_dir"]
-            # if val_auc > best_val_auc:
-            #     print(">>> Saving model.")
-            #     best_val_auc = val_auc
-            #     output_model = out_dir + "model"
-            #     learning_obj.saver.save(learning_obj.session, output_model)
-            #     np.save(out_dir + "pos_dists.npy", pos_dists)
-            #     np.save(out_dir + "pos_test_idx.npy", neg_test_idx)
-            #     np.save(out_dir + "neg_dists.npy", neg_dists)
-            #     np.save(out_dir + "pos_desc.npy", pos_desc)
-            #     np.save(out_dir + "binder_desc.npy", binder_desc)
-            #     np.save(out_dir + "neg_desc.npy", neg_desc)
-            #     np.save(out_dir + "neg_test_idx.npy", neg_test_idx)
-            #     np.save(out_dir + "neg_desc_2.npy", neg_desc_2)
-            #     np.save(out_dir + "neg_desc_2.npy", neg_desc_2)
+        # Compute val ROC AUC.
+        pos_dists = compute_dists(pos_desc, binder_desc)
+        neg_dists = compute_dists(neg_desc, neg_desc_2)
+        try:
+            val_auc = 1 - compute_roc_auc(pos_dists, neg_dists)
+            print("validation roc auc: {} ".format(val_auc))
+            print("Mean validation positive score: {} ".format(np.mean(pos_dists)))
+            print("Mean validation negative score: {} ".format(np.mean(neg_dists)))
+        except:
+            print(np.min(pos_dists))
+            print(np.min(neg_dists))
+            sys.exit(1)
+        val_time = time.time() - tic
 
-            # print("----------------------------------------------------")
+        print("Epoch time : ", convert_time(time.time() - t0))
+
+    print("----------------------------------------------------")
