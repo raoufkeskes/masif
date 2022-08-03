@@ -206,6 +206,7 @@ class MaSIF_ppi_search:
             tf.set_random_seed(0)
             with tf.device(idx_gpu):
 
+
                 initial_coords = self.compute_initial_coordinates()
                 mu_rho_initial = np.expand_dims(initial_coords[:, 0], 0).astype(
                     "float32"
@@ -326,7 +327,7 @@ class MaSIF_ppi_search:
                 config = tf.ConfigProto(allow_soft_placement=True)
                 config.gpu_options.allow_growth = True
                 self.session = tf.Session(config=config)
-                self.saver = tf.train.Saver()
+                self.saver = tf.train.Saver(max_to_keep=10000)
 
                 # Run the Op to initialize the variables.
                 init = tf.global_variables_initializer()

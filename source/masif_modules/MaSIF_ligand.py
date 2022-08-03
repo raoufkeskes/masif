@@ -297,7 +297,7 @@ class MaSIF_ligand:
                 config = tf.ConfigProto(allow_soft_placement=True)
                 config.gpu_options.allow_growth = True
                 self.session = session
-                self.saver = tf.train.Saver()
+                self.saver = tf.train.Saver(max_to_keep=10000)
 
                 # Run the Op to initialize the variables.
                 init = tf.global_variables_initializer()

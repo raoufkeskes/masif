@@ -212,10 +212,12 @@ def train_ppi_search(
         neg_mask,
         num_iterations=1000000,
         num_iter_test=1000,
-        batch_size=48,
+        batch_size=32, #48
         num_epochs=100,
         batch_size_val_test=1000,
 ):
+
+
     print("Number of training positive shapes: {}\n".format(len(pos_training_idx)))
     print("Number of validation positive shapes: {}\n".format(len(pos_val_idx)))
     print("Number of testing positive shapes: {}\n".format(len(pos_test_idx)))
@@ -223,6 +225,8 @@ def train_ppi_search(
     print("Number of training negative shapes: {}\n".format(len(neg_training_idx)))
     print("Number of validation negative shapes: {}\n".format(len(neg_val_idx)))
     print("Number of testing negative shapes: {}\n".format(len(neg_test_idx)))
+
+    exit(0)
 
     list_training_loss = []
     list_training_norm_grad = []
